@@ -1,23 +1,32 @@
-﻿using System.Security.Cryptography.X509Certificates;
+﻿using System.Collections.Generic;
+using System.Security.Cryptography.X509Certificates;
 using VoxEng.Core.Rendering;
-using VoxEng.Core.Rendering.Primitives;
+using Vulkan;
 
 namespace VoxEng.Core
 {
     public class VoxEng
     {
-        private RenderAgent agent;
+        //The manager used for rendering objects.
+        internal RenderManager _manager;
 
         /// <summary>
         /// Creates a new instance of the VoxEng.
         /// </summary>
         public VoxEng()
         {
-            agent = new RenderAgent();
-            agent.ConfigurePrimitive(new Cube());
-            agent.RenderEntities.Add(new Cube());
-            agent.DrawForever();
-
+            _manager = new RenderManager();
         }
+
+        public List<RenderEntity> Entities => _manager.Entities;
+
+        public void Draw()
+        {
+            while (true)
+            {
+                _manager.Draw();
+            }
+        }
+        
     }
 }

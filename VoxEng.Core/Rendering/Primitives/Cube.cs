@@ -1,28 +1,24 @@
-﻿using System;
-using System.Numerics;
-using Veldrid;
+﻿using System.Numerics;
 
 namespace VoxEng.Core.Rendering.Primitives
 {
-    public class Cube: Primitive
+    public class Cube: RenderEntity
     {
-        internal override Tuple<VertexPositionColor[], ushort[]> Definition()
+        public Cube()
         {
-            ushort[] indicies;
-            
-            VertexPositionColor[] verticies = new[]
+            base.Mesh = new Mesh();
+            base.Mesh.Verticies = new[]
             {
-                new VertexPositionColor(new Vector3(1f, -1f, -1f), RgbaFloat.Red),
-                new VertexPositionColor(new Vector3(1f, -1f, 1f), RgbaFloat.Red),
-                new VertexPositionColor(new Vector3(-1f, -1f, 1f), RgbaFloat.Red),
-                new VertexPositionColor(new Vector3(-1f, -1f, -1f), RgbaFloat.Red),
-                new VertexPositionColor(new Vector3(1f, 1f, -1f), RgbaFloat.Red),
-                new VertexPositionColor(new Vector3(1f, 1f, 1f), RgbaFloat.Red),
-                new VertexPositionColor(new Vector3(-1f, 1f, 1f), RgbaFloat.Red),
-                new VertexPositionColor(new Vector3(-1f, 1f, -1f), RgbaFloat.Red),
+                new Vector3(1f, -1f, -1f),
+                new Vector3(1f, -1f, 1f),
+                new Vector3(-1f, -1f, 1f),
+                new Vector3(-1f, -1f, -1f),
+                new Vector3(1f, 1f, -1f),
+                new Vector3(1f, 1f, 1f),
+                new Vector3(-1f, 1f, 1f),
+                new Vector3(-1f, 1f, -1f)
             };
-
-            indicies = new ushort[]
+            base.Mesh.Indicies = new ushort[]
             {
                 1, 2, 3,
                 7, 6, 5,
@@ -37,8 +33,6 @@ namespace VoxEng.Core.Rendering.Primitives
                 3, 2, 7,
                 4, 0, 7
             };
-
-            return new Tuple<VertexPositionColor[], ushort[]>(verticies, indicies);
         }
     }
 }
