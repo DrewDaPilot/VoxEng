@@ -17,8 +17,8 @@ namespace VoxEng.Core.Rendering
         /// </summary>
         public Vector3 Position;
 
-        public Mesh Mesh;
+        public Vector3 Scale = Vector3.One;
 
-        internal bool Initialized = false;
+        public Mesh Mesh;
     }
 }

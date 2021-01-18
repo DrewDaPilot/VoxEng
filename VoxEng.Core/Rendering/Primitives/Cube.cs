@@ -2,12 +2,13 @@
 
 namespace VoxEng.Core.Rendering.Primitives
 {
-    public class Cube: RenderEntity
+    /*
+    public static class Cube
     {
         public Cube()
         {
-            base.Mesh = new Mesh();
-            base.Mesh.Verticies = new[]
+            Mesh = new Mesh();
+            Mesh.Verticies = new[]
             {
                 new Vector3(1f, -1f, -1f),
                 new Vector3(1f, -1f, 1f),
@@ -18,7 +19,7 @@ namespace VoxEng.Core.Rendering.Primitives
                 new Vector3(-1f, 1f, 1f),
                 new Vector3(-1f, 1f, -1f)
             };
-            base.Mesh.Indicies = new ushort[]
+            Mesh.Indicies = new ushort[]
             {
                 1, 2, 3,
                 7, 6, 5,
@@ -35,4 +36,5 @@ namespace VoxEng.Core.Rendering.Primitives
             };
         }
     }
+    */
 }
