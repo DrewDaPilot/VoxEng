@@ -1,42 +1,45 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.ECS;
 using Svelto.ECS.Schedulers;
 
-namespace VoxEng.Core.ECS.Schedulers
+namespace VoxEng.Core.ECS.Scheduler
 {
-    public class DefaultSubmissionScheduler: EntitiesSubmissionScheduler
+    internal sealed class SubmissionScheduler: EntitiesSubmissionScheduler
     {
-        private uint _maxPerFrame;
-        private EnginesRoot.EntitiesSubmitter _onTick;
+        EnginesRoot.EntitiesSubmitter _onTick;
+        readonly uint                 _maxNumberOfOperationsPerFrame;
+        public override bool          paused { get; set; }
         
-        public DefaultSubmissionScheduler(uint maxOpsPerFrame = UInt32.MaxValue)
+        
+        public SubmissionScheduler(uint maxOpsPerTick = UInt32.MaxValue)
         {
-            _maxPerFrame = maxOpsPerFrame;
+            _maxNumberOfOperationsPerFrame = maxOpsPerTick;
         }
 
         public IEnumerator SubmitEntitiesAsync()
         {
-            if (!paused)
+            if (paused == false)
             {
-                var submitEntities = _onTick.Invoke(_maxPerFrame);
-
+                var submitEntities = _onTick.Invoke(_maxNumberOfOperationsPerFrame);
+                
                 while (submitEntities.MoveNext())
                     yield return null;
             }
         }
 
-        public IEnumerator SubmitEntitiesAsync(uint maxOps)
+        public IEnumerator SubmitEntitesAsync(uint maxOps)
         {
-            if (!paused)
+            if (paused == false)
             {
                 var submitEntities = _onTick.Invoke(maxOps);
-
+                
                 while (submitEntities.MoveNext())
                     yield return null;
             }
         }
-
+        
         public void SubmitEntities()
         {
             var enumerator = SubmitEntitiesAsync();
@@ -44,12 +47,6 @@ namespace VoxEng.Core.ECS.Schedulers
             while (enumerator.MoveNext());
         }
         
-
-        public override void Dispose()
-        {
-            throw new NotImplementedException();
-        }
-
         protected override EnginesRoot.EntitiesSubmitter onTick
         {
             set
@@ -58,6 +55,7 @@ namespace VoxEng.Core.ECS.Schedulers
             }
         }
 
-        public override bool paused { get; set; }
+        public override void Dispose() { }
+        
     }
 }

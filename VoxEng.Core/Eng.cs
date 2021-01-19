@@ -1,8 +1,11 @@
 ﻿
 using System.Diagnostics;
+using System.Threading.Tasks;
 using Svelto.ECS;
 using Veldrid.Sdl2;
-using VoxEng.Core.ECS.Schedulers;
+using VoxEng.Core.ECS;
+using VoxEng.Core.ECS.Scheduler;
+using VoxEng.Core.ECS.Scheduler.Interfaces;
 using VoxEng.Core.Rendering;
 
 namespace VoxEng.Core
@@ -10,40 +13,49 @@ namespace VoxEng.Core
     
     public class Eng
     {
+        private IEngineScheduler _scheduler;
+        private Stopwatch _sw;
+        
         private const uint TicksPerMillisecond = 1000;
         private const uint TicksPerSecond = 1000 * TicksPerMillisecond;
-        private bool _running = false;
+        private bool _running = true;
 
         const uint  DefaultPhysicsSimulationsPerSecond = 30;
         const uint  DefaultGraphicsFramesPerSecond     = 60;
         const float DefaultSimulationSpeed             = 1.0f;
         
-        //The manager used for rendering objects.
-        internal RenderManager _manager;
 
         /// <summary>
         /// Creates a new instance of the VoxEng.
         /// </summary>
         public Eng()
         {
-            _manager = new RenderManager();
+            _sw = Stopwatch.StartNew();
+            var logic = new CompositionRoot();
+            this._scheduler = logic.Scheduler;
             
-            var logic = new CompositionRoot()
+            logic.AddPlane();
+            
+            for (int i = 0; i < 10000; i++)
+            {
+                logic.AddCube();
+            }
         }
 
-        public void Execute()
+        public async Task Execute()
         {
-            var renderAction = new ScheduledAction(() => 
-                _scheduler.Execute(), 60, false);
-            
-            var clearFpsCounter = new ScheduledAction(() => 
-                _schedulerReporter.Report())
 
-            var clock = Stopwatch.StartNew();
-            
+            var renderTsk = new Task(async () =>
+            {
+                _scheduler.Execute();
+            });
+
+      
+            ScheduledTask rend = new ScheduledTask(renderTsk);
+
             while (_running)
             {
-                renderAction.Tick((ulong) clock.ElapsedTicks);
+                _scheduler.Execute();
             }
         }
 
@@ -51,10 +63,5 @@ namespace VoxEng.Core
         {
             _running = false;
         }
-
-        private DefaultEngineScheduler _scheduler;
-        private IEngineSchedulerReporter _scheduleReporter;
-        
-        public Sdl2Window Window => _manager._window;
     }
 }

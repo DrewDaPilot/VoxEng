@@ -47,6 +47,11 @@ namespace VoxEng.Core.Rendering
             Width = width;
             VSync = vsync;
         }
+
+        public AgentConfig()
+        {
+            
+        }
     }
     
     /// <summary>
@@ -86,7 +91,6 @@ namespace VoxEng.Core.Rendering
         public RenderAgent(AgentConfig cfg = default)
         {
             _config = cfg;
-            _entBuffers = new List<EntityBuffers>();
             Init();
         }
 
@@ -95,12 +99,13 @@ namespace VoxEng.Core.Rendering
         {
             //Set the config to the default value.
             _config = default;
-            _entBuffers = new List<EntityBuffers>();
             Init();
         }
 
         public void Init()
         {
+            _entBuffers = new List<EntityBuffers>();
+            
             WindowCreateInfo wci = new()
             {
                 X = 0,
@@ -119,8 +124,12 @@ namespace VoxEng.Core.Rendering
             _graphics = gd;
 
             var fac = _graphics.ResourceFactory;
-            
+            InitResources();
         }
+
+        private ResourceSet _projViewSet;
+        private ResourceSet _worldSet;
+        
 
         public void InitResources()
         {
@@ -163,6 +172,14 @@ namespace VoxEng.Core.Rendering
                 PrimitiveTopology.TriangleList, shaderSetDesc, 
                 new ResourceLayout[] { projSetLayout, worldSetLayout },
                 _graphics.MainSwapchain.Framebuffer.OutputDescription));
+
+            _projViewSet =
+                _graphics.ResourceFactory.CreateResourceSet(
+                    new ResourceSetDescription(projSetLayout, _projectionBuffer, _viewBuffer));
+            
+            _worldSet =
+                _graphics.ResourceFactory.CreateResourceSet(
+                    new ResourceSetDescription(worldSetLayout, _worldBuffer));
 
             //Create a new command list to use.
             _cl = fac.CreateCommandList();
@@ -209,18 +226,34 @@ namespace VoxEng.Core.Rendering
         /// </summary>
         public void PreDraw()
         {
+            Window.PumpEvents();
             //Instruct the graphics API that we wish to begin submitting commands.
             _cl.Begin();
             
-            //This code was deemed unnecessary per-frame since the perspective never changes at runtime.
-            /*
-             _cl.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreatePerspectiveFieldOfView(1.0f, 
-                (float) Window.Width / Window.Height, 0.5f, 100f));
-            */
+            _cl.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreatePerspectiveFieldOfView(
+                (float) Math.PI / 2,
+                (float) Window.Width / Window.Height,
+                0.5f,
+                1000f));
             
-            //Technically useless, this would update the camera each frame if it was being moved.
-            _cl.UpdateBuffer(_viewBuffer, 0, Matrix4x4.CreateLookAt(Vector3.UnitZ * 2.5f, Vector3.Zero, Vector3.UnitY));
+            _cl.UpdateBuffer(_viewBuffer, 0, Matrix4x4.CreateLookAt(new Vector3(0, 0, 10.0f), Vector3.Zero, Vector3.UnitY));
 
+            _cl.SetPipeline(_pipeline);
+
+            _cl.SetGraphicsResourceSet(0, _projViewSet);
+            _cl.SetGraphicsResourceSet(1, _worldSet);
+            
+            _cl.SetFramebuffer(_graphics.SwapchainFramebuffer);
+            
+            
+            _cl.ClearColorTarget(0, RgbaFloat.White);
+            
+            
+            
+            //This code was deemed unnecessary per-frame since the perspective never changes at runtime.
+            _cl.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreatePerspectiveFieldOfView(1.0f, 
+                (float) Window.Width / Window.Height, 0.5f, 100f));
+            
             //This code was not functional because count was not being incremented. 
             /*
             Matrix4x4 rot = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY) * 
@@ -229,6 +262,7 @@ namespace VoxEng.Core.Rendering
             */
             
             //Swap the framebuffer. Not entirely sure what this does (yet). This might be needed for v-sync.
+            
             _cl.SetFramebuffer(_graphics.MainSwapchain.Framebuffer);
         }
 
@@ -237,10 +271,17 @@ namespace VoxEng.Core.Rendering
         /// </summary>
         public void DrawEntity(TransformEntityComponent trans, MeshEntityComponent mesh)
         {
-
+            //Technically useless, this would update the camera each frame if it was being moved.
+            _cl.UpdateBuffer(_viewBuffer, 0, Matrix4x4.CreateLookAt(new Vector3(0, 0, -10f), Vector3.Zero, Vector3.UnitY));
+            
             _cl.SetVertexBuffer(0, _entBuffers[(int) mesh.BufferIndex].VertBuff);
-            _cl.SetIndexBuffer(_entBuffers[(int) mesh.BufferIndex].IdxBuf, IndexFormat.UInt16);
-            _cl.DrawIndexed((uint) mesh.Indicies.count, 1, 0,0,0);
+            if(_entBuffers[(int) mesh.BufferIndex].IdxBuf != null)
+                _cl.SetIndexBuffer(_entBuffers[(int) mesh.BufferIndex].IdxBuf, IndexFormat.UInt16);
+            _cl.UpdateBuffer(_worldBuffer, 0, Matrix4x4.CreateTranslation(trans.Position)  * Matrix4x4.CreateFromQuaternion(trans.Rotation) * Matrix4x4.CreateScale(trans.Scale));
+            if(mesh.Indicies.count >0)
+                _cl.DrawIndexed((uint) mesh.Indicies.count, 1, 0,0,0);
+            else
+                _cl.Draw((uint) mesh.Verticies.count);
         }
 
         /// <summary>
@@ -251,6 +292,46 @@ namespace VoxEng.Core.Rendering
             _cl.End();
             _graphics.SubmitCommands(_cl);
             _graphics.SwapBuffers(_graphics.MainSwapchain);
+        }
+
+        /// <summary>
+        /// Allocates a new vert/index buffer for rendering.
+        /// </summary>
+        /// <returns>The index of the buffer.</returns>
+        public int AllocBuffer(MeshEntityComponent init)
+        {
+
+            var idx = _entBuffers.Count;
+
+            var buff = new EntityBuffers();
+            buff.VertBuff = _graphics.ResourceFactory.CreateBuffer(new BufferDescription(
+                (uint) init.Verticies.count * 12,
+                BufferUsage.VertexBuffer));
+            if(init.Indicies.count > 0)
+                buff.IdxBuf = _graphics.ResourceFactory.CreateBuffer(new BufferDescription(
+                sizeof(ushort) * (uint) init.Indicies.count,
+                BufferUsage.IndexBuffer));
+            
+            _entBuffers.Add(buff);
+
+            Vector3[] verticesManaged = new Vector3[init.Verticies.count];
+            ushort[] indiciesManaged = new ushort[init.Indicies.count];
+            
+            for (int i = 0; i < init.Verticies.count; i++)
+            {
+                verticesManaged[i] = init.Verticies[i];
+            }
+
+            for (int i = 0; i < init.Indicies.count; i++)
+            {
+                indiciesManaged[i] = init.Indicies[i];
+            }
+            
+            _graphics.UpdateBuffer(_entBuffers[idx].VertBuff, 0, verticesManaged);
+            if(_entBuffers[idx].IdxBuf != null)
+                _graphics.UpdateBuffer(_entBuffers[idx].IdxBuf, 0, indiciesManaged);
+
+            return idx;
         }
     }
 }

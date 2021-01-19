@@ -1,35 +1,69 @@
-﻿using FixedMaths;
+﻿using System;
 using Svelto.ECS;
 using VoxEng.Core.ECS.Components;
+using VoxEng.Core.Rendering;
 
 namespace VoxEng.Core.ECS.Engines
 {
-    public class RenderEngine: IScheduledEngine, IQueryingEntitiesEngine
+    /// <summary>
+    /// A scheduled engine which renders all entities which are flagged as visible and contain the necessary components.
+    /// </summary>
+    internal class RenderEngine: IScheduledEngine, IQueryingEntitiesEngine
     {
+        public EntitiesDB entitiesDB { get; set; }
+
+        /// <summary>
+        /// The unique id of this engine which is useful for tracking tick timings.
+        /// </summary>
+        public Guid Id { get; } = Guid.NewGuid();
+        
+        private RenderAgent _agent;
+
+        /// <summary>
+        /// Called when rendering is ready.
+        /// Used for initializing render resources.
+        /// </summary>
         public void Ready()
         {
             
         }
+        
+        /// <summary>
+        /// Called when this rendering instance is to be disposed of.
+        /// </summary>
+        public void Dispose()
+        {
+            
+        }
 
-        public EntitiesDB entitiesDB { get; set; }
-        
-        
-        [Freq(60)]
-        public void Run(in FixedPoint delta)
+        /// <summary>
+        /// Invoked on each frame, this should render all entities that contain transforms and meshes, and are tagged for rendering.
+        /// </summary>
+        public void Tick()
         {
             foreach (var ((transforms, meshes, count), _) in entitiesDB
                 .QueryEntities<TransformEntityComponent, MeshEntityComponent>(
                     Groups.RenderMeshWithTransform.Groups))
             {
+                _agent.Window.PumpEvents();
+                _agent.PreDraw();
+
                 //For each group of components,
                 for (int i = 0; i < count; i++)
                 {
                     ref var transformComp   = ref transforms[i];
                     ref var meshComp = ref meshes[i];
+                    
+                    _agent.DrawEntity(transformComp, meshComp);
                 }
+                
+                _agent.PostDraw();
             }
         }
 
-        public string Name { get; } = "RenderEngine";
+        public RenderEngine(RenderAgent agent)
+        {
+            _agent = agent;
+        }
     }
 }

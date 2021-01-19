@@ -6,28 +6,21 @@ using VoxEng.Core.ECS.Descriptors;
 
 namespace VoxEng.Core.ECS.Builders
 {
+    /// <summary>
+    /// Builds an entity with a Transform and Mesh component for rendering.
+    /// </summary>
     internal struct RenderMeshTransformBuilder
     {
 
-        public void Build(IEntityFactory factory, int bufferIdx)
+        public void Build(IEntityFactory factory, MeshEntityComponent mesh, TransformEntityComponent transform)
         {
             EntityInitializer init = factory.BuildEntity
                 <RenderMeshWithTransformDescriptor>
                 (EgidFactory.GetNextId(), Groups.RenderMeshWithTransform.BuildGroup);
             
-            init.Init(new TransformEntityComponent()
-            {
-                Position = Vector3.Zero,
-                Scale = Vector3.One,
-                Rotation = Quaternion.Identity,
-            });
+            init.Init(transform);
             
-            init.Init(new MeshEntityComponent()
-            {
-                Verticies = new NativeDynamicArrayCast<Vector3>(),
-                Indicies = new NativeDynamicArrayCast<ushort>(),
-                BufferIndex = bufferIdx
-            });
+            init.Init(mesh);
         }
     }
 }

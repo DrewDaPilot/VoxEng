@@ -12,12 +12,13 @@ namespace Test
     {
         static void Main(string[] args)
         {
-            var logic = new Composi
+            MainAsync(args).GetAwaiter().GetResult();
         }
         
         static async Task MainAsync(string[] args)
         {
-
+            var e = new Eng();
+            await e.Execute();
         }
     }
 }
