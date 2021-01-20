@@ -9,5 +9,7 @@ namespace VoxEng.Core.ECS
         public abstract class Dynamic : GroupTag<Dynamic> { }
 
         public abstract class RenderMeshWithTransform: GroupCompound<RenderTag, Dynamic> {}
+
+        public static ExclusiveGroup CameraGroup = new ExclusiveGroup();
     }
 }

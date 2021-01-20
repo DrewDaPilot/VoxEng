@@ -12,10 +12,10 @@ namespace VoxEng.Core.ECS.Components
     public struct MeshEntityComponent: IEntityComponent
     {
         //An array of indices for this mesh. 
-        public NativeDynamicArrayCast<ushort> Indicies;
+        public NativeDynamicArray Indicies;
         
         //An array of vertices for this mesh.
-        public NativeDynamicArrayCast<Vector3> Verticies;
+        public NativeDynamicArray Verticies;
         
         //The index in the buffer array for this mesh. Used internally by the draw loop for buffer allocations.
         internal int BufferIndex;
@@ -23,7 +23,7 @@ namespace VoxEng.Core.ECS.Components
         public static MeshEntityComponent Cube()
         {
             var mesh = new MeshEntityComponent();
-            mesh.Verticies = new NativeDynamicArrayCast<Vector3>(NativeDynamicArray.Alloc<Vector3>(Allocator.Persistent));
+            mesh.Verticies = NativeDynamicArray.Alloc<Vector3>(Allocator.Persistent);
             mesh.Verticies.Add(new Vector3(1f, -1f, -1f));
             mesh.Verticies.Add(new Vector3(1f, -1f, 1f));
             mesh.Verticies.Add( new Vector3(-1f, -1f, 1f));
@@ -33,19 +33,19 @@ namespace VoxEng.Core.ECS.Components
             mesh.Verticies.Add(new Vector3(-1f, 1f, 1f));
             mesh.Verticies.Add(new Vector3(-1f, 1f, -1f));
 
-            mesh.Indicies = new NativeDynamicArrayCast<ushort>(NativeDynamicArray.Alloc<ushort>(Allocator.Persistent));
-            mesh.Indicies.Add(1); mesh.Indicies.Add(2); mesh.Indicies.Add(3);
-            mesh.Indicies.Add(7); mesh.Indicies.Add(6); mesh.Indicies.Add(5);
-            mesh.Indicies.Add(4); mesh.Indicies.Add(5); mesh.Indicies.Add(1);
-            mesh.Indicies.Add(5); mesh.Indicies.Add(6); mesh.Indicies.Add(2);
-            mesh.Indicies.Add(2); mesh.Indicies.Add(6); mesh.Indicies.Add(7);
-            mesh.Indicies.Add(0); mesh.Indicies.Add(3); mesh.Indicies.Add(7);
-            mesh.Indicies.Add(0); mesh.Indicies.Add(1); mesh.Indicies.Add(3);
-            mesh.Indicies.Add(4); mesh.Indicies.Add(7); mesh.Indicies.Add(5);
-            mesh.Indicies.Add(0); mesh.Indicies.Add(4); mesh.Indicies.Add(1);
-            mesh.Indicies.Add(1); mesh.Indicies.Add(5); mesh.Indicies.Add(2);
-            mesh.Indicies.Add(3); mesh.Indicies.Add(2); mesh.Indicies.Add(7);
-            mesh.Indicies.Add(4); mesh.Indicies.Add(0); mesh.Indicies.Add(7);
+            mesh.Indicies = NativeDynamicArray.Alloc<ushort>(Allocator.Persistent);
+            mesh.Indicies.Add<ushort>( 1); mesh.Indicies.Add<ushort>(2); mesh.Indicies.Add<ushort>(3);
+            mesh.Indicies.Add<ushort>(7); mesh.Indicies.Add<ushort>(6); mesh.Indicies.Add<ushort>(5);
+            mesh.Indicies.Add<ushort>(4); mesh.Indicies.Add<ushort>(5); mesh.Indicies.Add<ushort>(1);
+            mesh.Indicies.Add<ushort>(5); mesh.Indicies.Add<ushort>(6); mesh.Indicies.Add<ushort>(2);
+            mesh.Indicies.Add<ushort>(2); mesh.Indicies.Add<ushort>(6); mesh.Indicies.Add<ushort>(7);
+            mesh.Indicies.Add<ushort>(0); mesh.Indicies.Add<ushort>(3); mesh.Indicies.Add<ushort>(7);
+            mesh.Indicies.Add<ushort>(0); mesh.Indicies.Add<ushort>(1); mesh.Indicies.Add<ushort>(3);
+            mesh.Indicies.Add<ushort>(4); mesh.Indicies.Add<ushort>(7); mesh.Indicies.Add<ushort>(5);
+            mesh.Indicies.Add<ushort>(0); mesh.Indicies.Add<ushort>(4); mesh.Indicies.Add<ushort>(1);
+            mesh.Indicies.Add<ushort>(1); mesh.Indicies.Add<ushort>(5); mesh.Indicies.Add<ushort>(2);
+            mesh.Indicies.Add<ushort>(3); mesh.Indicies.Add<ushort>(2); mesh.Indicies.Add<ushort>(7);
+            mesh.Indicies.Add<ushort>(4); mesh.Indicies.Add<ushort>(0); mesh.Indicies.Add<ushort>(7);
 
             return mesh;
         }
@@ -54,13 +54,13 @@ namespace VoxEng.Core.ECS.Components
         {
             var mesh = new MeshEntityComponent();
             mesh.Verticies =
-                new NativeDynamicArrayCast<Vector3>(NativeDynamicArray.Alloc<Vector3>(Allocator.Persistent));
+                NativeDynamicArray.Alloc<Vector3>(Allocator.Persistent);
             mesh.Verticies.Add(new Vector3(-1, 1, 0));
             mesh.Verticies.Add(new Vector3(1, 1, 0));
             mesh.Verticies.Add(new Vector3(-1, -1, 0));
             mesh.Verticies.Add(new Vector3(1, -1, 0));
             
-            mesh.Indicies = new NativeDynamicArrayCast<ushort>(NativeDynamicArray.Alloc<ushort>(Allocator.Persistent));
+            mesh.Indicies = NativeDynamicArray.Alloc<ushort>(Allocator.Persistent);
 
             return mesh;
         }

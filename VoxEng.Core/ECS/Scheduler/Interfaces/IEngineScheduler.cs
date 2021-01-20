@@ -11,6 +11,8 @@ namespace VoxEng.Core.ECS.Scheduler.Interfaces
         /// <param name="eng">The engine to register.</param>
         public abstract void RegisterEngine(IScheduledEngine eng);
 
+        public abstract void RegisterGraphicsEngine(IScheduledEngine eng);
+
         public abstract void Execute();
     }
 }

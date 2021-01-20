@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using ImGuiNET;
 using SharpDX.Text;
+using Svelto.ECS.DataStructures;
 using Veldrid;
 using Veldrid.Sdl2;
 using Veldrid.SPIRV;
@@ -83,7 +85,10 @@ namespace VoxEng.Core.Rendering
         
         //The graphics device used.
         private GraphicsDevice _graphics;
-        
+
+        //the imgui instance used for rendering UI.
+        private ImGuiRenderer _imgui;
+
         /// <summary>
         /// Creates a new RenderAgent
         /// </summary>
@@ -108,8 +113,8 @@ namespace VoxEng.Core.Rendering
             
             WindowCreateInfo wci = new()
             {
-                X = 0,
-                Y = 0,
+                X = 100,
+                Y = 100,
                 WindowWidth = _config.Width,
                 WindowHeight = _config.Height,
                 WindowTitle = "VoxEngine 0.01a"
@@ -122,6 +127,18 @@ namespace VoxEng.Core.Rendering
 
             Window = win;
             _graphics = gd;
+
+            _imgui = new ImGuiRenderer(_graphics,
+                _graphics.MainSwapchain.Framebuffer.OutputDescription,
+                Window.Width,
+                Window.Height);
+            
+            Window.Resized += () =>
+            {
+                _imgui.WindowResized(Window.Width, Window.Height);
+                _graphics.MainSwapchain.Resize((uint) Window.Width, (uint) Window.Height);
+            };
+            
 
             var fac = _graphics.ResourceFactory;
             InitResources();
@@ -186,6 +203,8 @@ namespace VoxEng.Core.Rendering
             
             //Forward the configuration to the gpu.
             UpdateCfg(_config);
+
+            ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
         }
 
         /// <summary>
@@ -224,38 +243,42 @@ namespace VoxEng.Core.Rendering
         /// <summary>
         /// Sets up the API for the draw loop itself.
         /// </summary>
-        public void PreDraw()
+        public void PreDraw(Vector3 camPos)
         {
-            Window.PumpEvents();
+            var snapshot = Window.PumpEvents();
+            _imgui.Update(1f / 60f, snapshot);
+            
+            if (ImGui.Begin("Debug Window"))
+            {
+                ImGui.Text($"Application average ms/frame: {1000.0f/ ImGui.GetIO().Framerate}");
+                ImGui.Text($"Application average fps : {ImGui.GetIO().Framerate}");
+                ImGui.End();
+            }
+
             //Instruct the graphics API that we wish to begin submitting commands.
             _cl.Begin();
             
-            _cl.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreatePerspectiveFieldOfView(
-                (float) Math.PI / 2,
-                (float) Window.Width / Window.Height,
-                0.5f,
-                1000f));
-            
-            _cl.UpdateBuffer(_viewBuffer, 0, Matrix4x4.CreateLookAt(new Vector3(0, 0, 10.0f), Vector3.Zero, Vector3.UnitY));
+            _cl.SetFramebuffer(_graphics.SwapchainFramebuffer);
+
+            _cl.UpdateBuffer(_viewBuffer, 0, Matrix4x4.CreateLookAt(camPos, Vector3.Zero, Vector3.UnitY));
 
             _cl.SetPipeline(_pipeline);
 
             _cl.SetGraphicsResourceSet(0, _projViewSet);
             _cl.SetGraphicsResourceSet(1, _worldSet);
             
-            _cl.SetFramebuffer(_graphics.SwapchainFramebuffer);
-            
-            
             _cl.ClearColorTarget(0, RgbaFloat.White);
             
             
             
-            //This code was deemed unnecessary per-frame since the perspective never changes at runtime.
+            //This code was deemed unnecessary per-frame since the perspective never changes at runtime. (Unless a change of FOV is made.
             _cl.UpdateBuffer(_projectionBuffer, 0, Matrix4x4.CreatePerspectiveFieldOfView(1.0f, 
                 (float) Window.Width / Window.Height, 0.5f, 100f));
             
             //This code was not functional because count was not being incremented. 
             /*
+                In practice, the following logic would allow the camera to have a rotational axis, but I am not certain its necessary.
+             
             Matrix4x4 rot = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY) * 
                             Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, (count / 3000f));
             _cl.UpdateBuffer(_worldBuffer, 0, ref rot);
@@ -271,17 +294,10 @@ namespace VoxEng.Core.Rendering
         /// </summary>
         public void DrawEntity(TransformEntityComponent trans, MeshEntityComponent mesh)
         {
-            //Technically useless, this would update the camera each frame if it was being moved.
-            _cl.UpdateBuffer(_viewBuffer, 0, Matrix4x4.CreateLookAt(new Vector3(0, 0, -10f), Vector3.Zero, Vector3.UnitY));
-            
             _cl.SetVertexBuffer(0, _entBuffers[(int) mesh.BufferIndex].VertBuff);
-            if(_entBuffers[(int) mesh.BufferIndex].IdxBuf != null)
-                _cl.SetIndexBuffer(_entBuffers[(int) mesh.BufferIndex].IdxBuf, IndexFormat.UInt16);
+            _cl.SetIndexBuffer(_entBuffers[mesh.BufferIndex].IdxBuf, IndexFormat.UInt16);
             _cl.UpdateBuffer(_worldBuffer, 0, Matrix4x4.CreateTranslation(trans.Position)  * Matrix4x4.CreateFromQuaternion(trans.Rotation) * Matrix4x4.CreateScale(trans.Scale));
-            if(mesh.Indicies.count >0)
-                _cl.DrawIndexed((uint) mesh.Indicies.count, 1, 0,0,0);
-            else
-                _cl.Draw((uint) mesh.Verticies.count);
+            _cl.DrawIndexed((uint) mesh.Indicies.Count<ushort>(), 1, 0,0,0);
         }
 
         /// <summary>
@@ -289,6 +305,7 @@ namespace VoxEng.Core.Rendering
         /// </summary>
         public void PostDraw()
         {
+            _imgui.Render(_graphics, _cl);
             _cl.End();
             _graphics.SubmitCommands(_cl);
             _graphics.SwapBuffers(_graphics.MainSwapchain);
@@ -305,31 +322,20 @@ namespace VoxEng.Core.Rendering
 
             var buff = new EntityBuffers();
             buff.VertBuff = _graphics.ResourceFactory.CreateBuffer(new BufferDescription(
-                (uint) init.Verticies.count * 12,
+                (uint) init.Verticies.Count<Vector3>() * 12,
                 BufferUsage.VertexBuffer));
-            if(init.Indicies.count > 0)
+            if(init.Indicies.Count<ushort>() > 0)
                 buff.IdxBuf = _graphics.ResourceFactory.CreateBuffer(new BufferDescription(
-                sizeof(ushort) * (uint) init.Indicies.count,
+                sizeof(ushort) * (uint) init.Indicies.Count<ushort>(),
                 BufferUsage.IndexBuffer));
             
             _entBuffers.Add(buff);
-
-            Vector3[] verticesManaged = new Vector3[init.Verticies.count];
-            ushort[] indiciesManaged = new ushort[init.Indicies.count];
             
-            for (int i = 0; i < init.Verticies.count; i++)
-            {
-                verticesManaged[i] = init.Verticies[i];
-            }
-
-            for (int i = 0; i < init.Indicies.count; i++)
-            {
-                indiciesManaged[i] = init.Indicies[i];
-            }
             
-            _graphics.UpdateBuffer(_entBuffers[idx].VertBuff, 0, verticesManaged);
-            if(_entBuffers[idx].IdxBuf != null)
-                _graphics.UpdateBuffer(_entBuffers[idx].IdxBuf, 0, indiciesManaged);
+            //TODO: when svelto supports it, attempt to use the native pointer directly so there is no overhead from a copy.
+            
+            _graphics.UpdateBuffer(_entBuffers[idx].VertBuff, 0, init.Verticies.ToIntPTR<Vector3>(), (uint) init.Verticies.Count<Vector3>() * 12);
+            _graphics.UpdateBuffer(_entBuffers[idx].IdxBuf, 0, init.Indicies.ToIntPTR<ushort>(), (uint) init.Indicies.Count<ushort>() * sizeof(ushort));
 
             return idx;
         }

@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Threading.Tasks;
+using Svelto.ECS;
 
 namespace VoxEng.Core.ECS.Engines
 {
-    public interface IScheduledEngine
+    public interface IScheduledEngine: IEngine
     {
 
         
@@ -18,13 +20,16 @@ namespace VoxEng.Core.ECS.Engines
         public abstract void Dispose();
 
         /// <summary>
-        /// A method that is invoked as frequently as possible.
+        /// A method that is invoked as frequently as possible. Only use for logic that needs to be run every frame, otherwise use <see cref="TickFixed"/>.
         /// </summary>
-        public abstract void Tick();
-
+        public virtual void Tick()
+        {
+            
+        }
+        
         /// <summary>
         /// A method that is invoked at a fixed interval.
-        /// The default interval is 60tps, but this can be changed using the <see cref="TickRate"/> attribute.
+        /// The default interval is 60tps, but this can be changed using <see cref="VoxEng.Core.ECS.Scheduler.TickRateAttribute"/>.
         /// </summary>
         public virtual void TickFixed()
         {

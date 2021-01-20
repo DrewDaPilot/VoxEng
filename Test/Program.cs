@@ -17,8 +17,8 @@ namespace Test
         
         static async Task MainAsync(string[] args)
         {
-            var e = new Eng();
-            await e.Execute();
+            var e = new Engine();
+            e.Execute();
         }
     }
 }
